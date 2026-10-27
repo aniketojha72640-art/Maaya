@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">GestureCursor AI</string>
+    <string name="accessibility_service_label">GestureCursor Touch Bridge</string>
+    <string name="accessibility_service_description">Tracks hand gestures via camera to move a floating cursor and dispatch touch actions.</string>
+</resources>
