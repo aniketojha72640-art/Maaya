@@ -1,0 +1,63 @@
+name: Build GestureCursor Android APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    name: Compile Vision Engine & Package APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: 2. Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 3. Accept Android SDK Licenses & Install SDK 34
+        run: |
+          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager | sort -V | tail -n 1)
+          echo "Using sdkmanager at: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: 4. Provision Gradle 8.7 (No Wrapper JAR Needed)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+          cache-read-only: false
+
+      - name: 5. Download MediaPipe HandLandmarker Model into Assets
+        run: |
+          mkdir -p app/src/main/assets
+          curl -L --retry 3 --fail \
+            "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task" \
+            -o app/src/main/assets/hand_landmarker.task
+          ls -lh app/src/main/assets/hand_landmarker.task
+
+      - name: 6. Compile Debug APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: 7. Rename APK for Easy Identification
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/GestureCursor-debug.apk
+
+      - name: 8. Upload Installable APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GestureCursor-Android-APK
+          path: app/build/outputs/apk/debug/GestureCursor-debug.apk
+          if-no-files-found: error
+          retention-days: 30
